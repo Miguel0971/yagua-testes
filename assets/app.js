@@ -103,7 +103,8 @@ document.addEventListener('click',event=>{
 document.addEventListener('toggle',event=>{
   if(event.target.matches?.('.cell-editor') && event.target.open){
     document.querySelectorAll('.cell-editor[open]').forEach(d=>{if(d!==event.target)d.open=false;});
-    event.target.querySelector('select,input[type=date]')?.focus();
+    positionCellEditor(event.target);
+    event.target.querySelector('select,input[type=date]')?.focus({preventScroll:true});
   }
 },true);
 document.addEventListener('keydown',event=>{
@@ -139,3 +140,23 @@ document.addEventListener('submit',async event=>{
     target.textContent=error.message;target.hidden=false;if(target===notice)target.classList.add('error');
   }finally{form.querySelectorAll('button[data-submitting]').forEach(b=>{b.disabled=false;delete b.dataset.submitting;});}
 });
+
+function positionCellEditor(editor){
+  const form=editor.querySelector('.inline-edit'),anchor=editor.querySelector('summary');
+  if(!form||!editor.open)return;
+  form.classList.add('floating-edit');
+  const box=anchor.getBoundingClientRect(),height=form.offsetHeight;
+  const width=form.offsetWidth;
+  form.style.left=Math.max(8,Math.min(box.left,window.innerWidth-width-8))+'px';
+  form.style.top=Math.max(8,box.bottom+height+8>window.innerHeight?box.top-height-4:box.bottom+4)+'px';
+}
+document.addEventListener('click',event=>{
+  document.querySelectorAll('.cell-editor[open]').forEach(editor=>{
+    if(!editor.contains(event.target)){editor.open=false;editor.querySelector('form').reset();}
+  });
+});
+window.addEventListener('resize',()=>document.querySelectorAll('.cell-editor[open]').forEach(positionCellEditor));
+document.addEventListener('scroll',event=>{
+  if(event.target.closest?.('.inline-edit'))return;
+  document.querySelectorAll('.cell-editor[open]').forEach(editor=>{editor.open=false;});
+},true);

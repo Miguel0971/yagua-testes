@@ -1,5 +1,13 @@
 # Atualizar o Yágua CS já publicado
 
+## Ajuste de lista compacta (1.4.1)
+
+Se já instalou a versão com Lista, cores e status personalizados, basta atualizar os arquivos no GitHub e aguardar o deploy. Não há nova migração de banco nesta revisão. Atualize a página com Ctrl+F5.
+
+A Lista agora usa uma linha por cliente, etiquetas menores e textos truncados. Passe o mouse para consultar o texto completo ou abra o cliente. A edição abre em um painel pequeno sobre a célula, sem aumentar a altura da linha.
+
+Se ainda está numa versão anterior à Lista, siga a migração abaixo.
+
 Esta versão adiciona Lista editável, status personalizados e sete paletas. Preserve seu banco atual e suas variáveis da Vercel. Não execute install.php nem import-sqlite.php novamente.
 
 ## 1. Atualizar o banco no Neon antes de publicar

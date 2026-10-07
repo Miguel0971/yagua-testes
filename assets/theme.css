@@ -125,3 +125,29 @@
 [data-theme=dark] .column-list-link{color:var(--accent-light)}
 [data-theme=dark] .cell-error{color:#ffa9b5}
 @media(max-width:700px){.topbar{flex-wrap:wrap;height:auto;min-height:74px;padding:12px 16px;gap:10px}.top-date{display:none}.palette-form{margin-left:auto}.palette-form select{width:92px}.palette-form .button{padding:5px}.breadcrumb{display:none}.view-tabs{gap:16px}.client-list tr>:first-child{min-width:210px;max-width:230px}.list-client-link{min-width:185px}.client-list-scroll{max-height:68vh}.view-toolbar>.muted-link{margin:0}}
+
+/* Lista compacta: uma linha por cliente; editores flutuam sobre a tabela. */
+.client-list{table-layout:fixed;width:1600px;min-width:100%;font-size:12px}
+.client-list th,.client-list td{height:42px;box-sizing:border-box;padding:5px 10px;min-width:0;vertical-align:middle;white-space:nowrap;border-right-color:transparent}
+.client-list thead th{height:34px;font-weight:500;letter-spacing:0;border-right-color:var(--line)}
+.client-list tr>:first-child{min-width:0;max-width:none;border-right-color:var(--line)}
+.client-list tbody tr:hover td{border-right-color:var(--line)}
+.client-list-scroll{border-radius:6px;max-height:74vh}
+.list-client-link{min-width:0;gap:9px;height:30px}
+.list-client-link strong{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.list-client-id{font-size:10px;color:var(--muted);font-weight:400;flex-shrink:0}
+.list-client-link>.icon{flex-shrink:0;opacity:0}
+.list-client-link:hover>.icon,.list-client-link:focus-visible>.icon{opacity:1}
+.client-list .list-wrapped{min-width:0;max-width:none;max-height:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:26px}
+.client-list .pill{font-size:11px;line-height:20px;padding:0 7px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:4px}
+.cell-editor summary{min-height:28px;height:28px;padding:0 3px;gap:4px}
+.cell-editor summary>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell-pencil{flex-shrink:0;width:13px;opacity:0}
+.cell-editor:hover .cell-pencil,.cell-editor[open] .cell-pencil,.cell-editor:focus-within .cell-pencil{opacity:1}
+.client-list .list-alert{display:inline-block;min-width:0;max-width:100%;box-sizing:border-box;padding:2px 6px;border-radius:4px;border-left-width:2px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:20px}
+.client-list .list-alert strong{font-size:10px;letter-spacing:.015em}
+.inline-edit.floating-edit{position:fixed;z-index:1000;width:240px;max-width:calc(100vw - 16px);min-width:0;box-sizing:border-box;margin:0;padding:14px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 28px #152c4529;white-space:normal}
+[data-theme=dark] .inline-edit.floating-edit{background:#193547;box-shadow:0 8px 28px #0006}
+.cell-editor:not([open])>.inline-edit{display:none}
+.cell-error:empty{display:none}
+@media(pointer:coarse){.client-list th,.client-list td{height:46px}}
