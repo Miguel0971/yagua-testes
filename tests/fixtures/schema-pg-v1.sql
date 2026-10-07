@@ -1,14 +1,3 @@
-CREATE TABLE IF NOT EXISTS board_statuses (
- key TEXT PRIMARY KEY, label TEXT NOT NULL, color TEXT NOT NULL,
- "sortOrder" INTEGER NOT NULL DEFAULT 0, "isClosed" INTEGER NOT NULL DEFAULT 0 CHECK("isClosed" IN (0,1)),
- builtin INTEGER NOT NULL DEFAULT 0 CHECK(builtin IN (0,1))
-);
-INSERT INTO board_statuses(key,label,color,"sortOrder","isClosed",builtin) VALUES
- ('active','Em acompanhamento','ocean',10,0,1),
- ('waiting','Aguardando cliente','amber',20,0,1),
- ('attention','Ação necessária','rose',30,0,1),
- ('done','Concluído','forest',40,1,1)
- ON CONFLICT(key) DO NOTHING;
 
 CREATE TABLE users (
  id BIGSERIAL PRIMARY KEY, nome TEXT NOT NULL,
@@ -16,7 +5,6 @@ CREATE TABLE users (
  role TEXT NOT NULL CHECK(role IN ('ADMIN','USUARIO')), "mustChangePassword" INTEGER NOT NULL DEFAULT 0,
  "authVersion" INTEGER NOT NULL DEFAULT 1
 );
-ALTER TABLE users ADD COLUMN "colorTheme" TEXT NOT NULL DEFAULT 'ocean';
 CREATE TABLE clients (
  id BIGSERIAL PRIMARY KEY, nome TEXT NOT NULL, observacoes TEXT NOT NULL DEFAULT '',
  "ownerId" INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','waiting','attention','done')),
@@ -24,7 +12,6 @@ CREATE TABLE clients (
  "nextContact" TEXT, cadence INTEGER NOT NULL DEFAULT 7 CHECK(cadence BETWEEN 1 AND 365),
  "createdAt" TEXT NOT NULL, "updatedAt" TEXT NOT NULL, "deletedAt" TEXT, version INTEGER NOT NULL DEFAULT 1
 );
-ALTER TABLE clients ADD COLUMN "boardStatus" TEXT REFERENCES board_statuses(key);
 CREATE TABLE technicians (id BIGSERIAL PRIMARY KEY, nome TEXT NOT NULL, whatsapp TEXT NOT NULL DEFAULT '', email TEXT NOT NULL DEFAULT '', "deletedAt" TEXT);
 CREATE TABLE client_technicians (
  "clientId" INTEGER NOT NULL REFERENCES clients(id), "technicianId" INTEGER NOT NULL REFERENCES technicians(id),
@@ -57,4 +44,4 @@ CREATE UNIQUE INDEX users_login_lower ON users (lower(login));
 CREATE TABLE sessions (id TEXT PRIMARY KEY, payload TEXT NOT NULL, expires BIGINT NOT NULL);
 CREATE INDEX sessions_expiry ON sessions(expires);
 CREATE TABLE schema_meta (version INTEGER NOT NULL);
-INSERT INTO schema_meta VALUES (2);
+INSERT INTO schema_meta VALUES (1);

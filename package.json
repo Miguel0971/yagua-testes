@@ -1,8 +1,12 @@
 {
   "name": "yagua-cs",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
-  "description": "Yágua CS — PHP com PostgreSQL na Vercel",
-  "engines": { "node": "22.x" },
-  "scripts": { "test:php": "php tests/followup.php" }
+  "description": "Y\u00e1gua CS \u2014 PHP com PostgreSQL na Vercel",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "test:php": "php tests/followup.php"
+  }
 }

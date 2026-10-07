@@ -1,3 +1,7 @@
+# Atualização: Lista, status personalizados e cores
+
+**Já usa o aplicativo? Siga ATUALIZAR-LISTA.md antes de substituir os arquivos.** Há uma migração do banco obrigatória nesta versão. Não reinstale o sistema.
+
 # Publicação na Vercel
 
 Para GitHub + Vercel + PostgreSQL, siga **PUBLICAR-VERCEL.md**. Os passos abaixo continuam destinados à instalação local PHP + SQLite.
@@ -18,7 +22,7 @@ Se o app já está instalado, **não execute install.php e não apague o banco**
    sudo -u daemon /opt/lampp/bin/php /opt/lampp/htdocs/yagua-cs/migrate.php
    ```
 
-   O comando cria primeiro uma cópia consistente do SQLite na pasta privada, com nome `yagua.sqlite.backup-DATA-SUFIXO`. Depois adiciona WhatsApp e e-mail aos contatos. Clientes, contas, senhas, vínculos, histórico, tarefas e IDs são preservados. Rodar novamente apenas informa que o banco já está atualizado. O backup automático requer SQLite 3.27 ou superior; se a versão for menor, a atualização para sem alterar os dados.
+   O comando cria primeiro uma cópia consistente do SQLite na pasta privada, com nome `yagua.sqlite.backup-DATA-SUFIXO`. Depois adiciona os campos que faltarem para contatos, cores de usuário e status personalizados. Clientes, contas, senhas, vínculos, histórico, tarefas e IDs são preservados. Rodar novamente apenas informa que o banco já está atualizado. O backup automático requer SQLite 3.27 ou superior; se a versão for menor, a atualização para sem alterar os dados.
 3. Reabra o app. Se a página estava aberta, atualize-a antes de preencher formulários.
 
 Para instalação nova, siga a seção de instalação abaixo; o banco já será criado na versão atual.
@@ -29,10 +33,10 @@ Para instalação nova, siga a seção de instalação abaixo; o banco já será
 - Preencha os campos de **Novo contato do cliente** e clique em **Adicionar outro contato** para incluir outras pessoas. Pode misturar contatos existentes e novos no mesmo salvamento.
 - Nome é obrigatório para um novo contato preenchido. WhatsApp e e-mail são opcionais: cadastre um, ambos ou deixe-os em branco. Uma linha totalmente vazia é ignorada.
 - Ao salvar, os contatos novos são criados e vinculados ao cliente na mesma transação. Qualquer erro desfaz a operação inteira, sem criar contatos soltos ou alterações parciais.
-- Esses registros representam os contatos contatos do cliente; não são contas da equipe do CS e não recebem login. Um contato existente pode ser vinculado a mais de um cliente quando necessário.
+- Esses registros representam os contatos do cliente; não são contas da equipe do CS e não recebem login. Um contato existente pode ser vinculado a mais de um cliente quando necessário.
 - No WhatsApp brasileiro, informe DDD e número: o sistema acrescenta 55. Para outros países, informe + seguido do código do país. Números internacionais são armazenados normalizados. Exemplo: `(11) 99999-9999` vira `5511999999999`.
 - Os detalhes do cliente e a administração de contatos exibem links de WhatsApp e e-mail. Os links só abrem a conversa/composição; não enviam mensagens automaticamente.
-- Edite os contatos de um contato em **Contatos → Editar**. O novo cadastro e a busca direta estão disponíveis aos administradores, mantendo as permissões da versão anterior.
+- Edite WhatsApp e e-mail de um contato em **Contatos → Editar**. O novo cadastro e a busca direta estão disponíveis aos administradores, mantendo as permissões da versão anterior.
 - Não há um número fixo de novos contatos na interface. Como qualquer formulário PHP, envios muito grandes dependem de `max_input_vars`, `post_max_size` e memória no servidor. O app detecta divergência na quantidade recebida e rejeita a gravação parcial; aumente esses limites ou salve em lotes quando necessário.
 
 ### Tema
@@ -41,6 +45,9 @@ Use **Tema escuro / Tema claro** no topo de qualquer página (também disponíve
 
 ## O que está pronto
 
+- **Lista editável (padrão):** clique em Status, Responsável, Prioridade ou Próximo contato para editar e salvar sem sair da lista.
+- **Cores por usuário:** sete paletas no topo da página, compatíveis com tema claro e escuro.
+- **Status personalizados:** administradores criam etapas com nome, cor, ordem e tipo aberto/concluído. Cada coluna do quadro abre também em lista.
 - **Clientes em cards:** nome, contatos, último contato, quantidade de dias sem contato, última atualização, responsável do CS, progresso das subtarefas e próximo contato.
 - **Quadro por status:** Em acompanhamento, Aguardando cliente, Ação necessária e Concluído. Arrastar cards no computador ou usar o seletor de cada card (também funciona por teclado/celular).
 - **Busca e filtros:** nome parcial ou ID exato, status, responsável, clientes que precisam de contato, retornos vencidos e ordenação por tempo sem contato, atualização recente, clientes novos ou nome.

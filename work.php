@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-const STATUSES=['active'=>'Em acompanhamento','waiting'=>'Aguardando cliente','attention'=>'Ação necessária','done'=>'Concluído'];
+require_once __DIR__.'/features.php';
 const PRIORITIES=['low'=>'Baixa','normal'=>'Normal','high'=>'Alta','urgent'=>'Urgente'];
 function choose(array $options, string $key): string {
     $value=field($_POST,$key,30);
@@ -73,20 +73,22 @@ function saveClientLinks(int $id,array $data): void {
     foreach($ids as $t)sql('INSERT INTO client_technicians VALUES (?,?)',[$id,$t]);
 }
 function handleWorkAction(string $action,array $user): void {
+    handleFeatureAction($action,$user);
     if($action==='client_save') {
         $id=empty($_POST['id'])?null:positiveId($_POST['id']);
         if(!$id)requireAdmin($user);
         $name=field($_POST,'nome',160);$description=field($_POST,'observacoes',15000,false);
-        $owner=nullableUser('ownerId');$status=choose(STATUSES,'status');$priority=choose(PRIORITIES,'priority');
+        $owner=nullableUser('ownerId');$status=choose(statusLabels(),'status');$priority=choose(PRIORITIES,'priority');
         $next=dateOnly('nextContact');$cadence=positiveId($_POST['cadence']??7);
         if($cadence>365)throw new DomainException('A frequência deve ser de 1 a 365 dias.');
         $id=transaction(function()use($id,$name,$description,$owner,$status,$priority,$next,$cadence,$user){
+            $lifecycle=stageLifecycle($status);
             if($id){$c=activeClient($id);checkVersion($c);
                 if($user['role']!=='ADMIN')$name=$c['nome'];
-                sql('UPDATE clients SET nome=?,observacoes=?,ownerId=?,status=?,priority=?,nextContact=?,cadence=?,version=version+1,updatedAt=? WHERE id=?',[$name,$description,$owner,$status,$priority,$next,$cadence,nowUtc(),$id]);
+                sql('UPDATE clients SET nome=?,observacoes=?,ownerId=?,status=?,boardStatus=?,priority=?,nextContact=?,cadence=?,version=version+1,updatedAt=? WHERE id=?',[$name,$description,$owner,$lifecycle,$status,$priority,$next,$cadence,nowUtc(),$id]);
                 activity($id,$user,'Atualizou os dados do acompanhamento.');
             }else{
-                sql('INSERT INTO clients(nome,observacoes,ownerId,status,priority,nextContact,cadence,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)',[$name,$description,$owner,$status,$priority,$next,$cadence,nowUtc(),nowUtc()]);
+                sql('INSERT INTO clients(nome,observacoes,ownerId,status,boardStatus,priority,nextContact,cadence,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)',[$name,$description,$owner,$lifecycle,$status,$priority,$next,$cadence,nowUtc(),nowUtc()]);
                 $id=insertedId('clients');activity($id,$user,'Criou o acompanhamento do cliente.');
             }
             if($user['role']==='ADMIN')saveClientLinks($id,$_POST);
@@ -94,10 +96,10 @@ function handleWorkAction(string $action,array $user): void {
         });finish('client='.$id,'Acompanhamento salvo.');
     }
     if($action==='client_status') {
-        $id=positiveId($_POST['id']??null);$status=choose(STATUSES,'status');
+        $id=positiveId($_POST['id']??null);$status=choose(statusLabels(),'status');
         transaction(function()use($id,$status,$user){$c=activeClient($id);checkVersion($c);
-            sql('UPDATE clients SET status=?,version=version+1 WHERE id=?',[$status,$id]);
-            activity($id,$user,'Alterou o status para “'.STATUSES[$status].'”.');
+            sql('UPDATE clients SET status=?,boardStatus=?,version=version+1 WHERE id=?',[stageLifecycle($status),$status,$id]);
+            activity($id,$user,'Alterou o status para “'.statusLabels()[$status].'”.');
         });finish('client='.$id,'Status atualizado.');
     }
     if($action==='client_archive'||$action==='client_restore') {

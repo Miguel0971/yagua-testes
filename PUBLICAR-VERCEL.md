@@ -1,5 +1,7 @@
 # Yágua CS — GitHub + Vercel + PostgreSQL
 
+**Sistema já publicado:** siga ATUALIZAR-LISTA.md. Execute `cloud/upgrade-list.sql` no banco atual antes de publicar os arquivos desta versão. As etapas de instalação/importação abaixo são apenas para a primeira publicação.
+
 Esta versão preserva o aplicativo PHP, as telas e as funcionalidades existentes. Na Vercel, usa `vercel-php@0.9.0` (runtime comunitário, PHP 8.5), Node 22 e PostgreSQL externo. Não é uma versão Next.js. Sem `DATABASE_URL`, continua disponível a instalação local em SQLite descrita no LEIA-ME.
 
 Inclui clientes, contatos com WhatsApp/e-mail, vínculo no cadastro, histórico com autores, comentários, subtarefas, agenda, equipe, permissões, tema escuro e alertas crescentes. Banco e sessões ficam no PostgreSQL; nenhum dado depende do disco temporário da Vercel.
@@ -56,7 +58,7 @@ sudo --preserve-env=DATABASE_URL /usr/bin/php cloud/import-sqlite.php /srv/yagua
 
 O `sudo` permite ler o arquivo privado pertencente ao usuário `daemon`. Se você configurou outro caminho no sistema antigo, use esse caminho.
 
-O comando preserva IDs, vínculos, descrições, status, prazos, subtarefas, autores históricos, nomes registrados na época e hashes de senha. Aceita as versões 1 e 2 do banco do **Yágua CS independente**. Não importa diretamente o banco do GetGap antigo.
+O comando preserva IDs, vínculos, descrições, status, prazos, subtarefas, autores históricos, nomes registrados na época e hashes de senha. Aceita as versões 1, 2 e 3 do banco do **Yágua CS independente**. Não importa diretamente o banco do GetGap antigo.
 
 A importação acontece em uma transação: falhas desfazem os dados e tabelas criados no destino. O comando recusa um destino já preparado, inclusive depois de uma primeira importação bem-sucedida. Não mistura bases nem duplica dados.
 
@@ -187,3 +189,9 @@ PHP_BIN=/usr/bin/php python3 tests/integration.py
 ### Validação desta entrega
 
 Testes funcionais aprovados com PostgreSQL 16 e PHP 8.3/8.5. O PHP 8.5 usado na segunda execução é o distribuído por `vercel-php@0.9.0`. O builder desse runtime também gerou a função Node 22 com os arquivos necessários. Compatibilidade SQLite e 17 cenários de alerta aprovados. O deploy em uma conta Vercel e a conexão com o seu provedor ainda precisam ser feitos seguindo este guia; os testes locais não substituem essa verificação final.
+
+### Correção: Neon “Endpoint ID is not specified”
+
+Atualize `cloud/database.php` para a versão deste pacote e publique um novo commit/deploy. O conector agora envia explicitamente `options=endpoint=...`, extraído do hostname Neon, para funcionar também quando o libpq do runtime não envia SNI. A URL `DATABASE_URL` existente pode ser mantida. O parâmetro explícito `options=endpoint%3D...` na URL também é reconhecido e validado. Não reinstale nem reimporte o banco para corrigir esse erro.
+
+Teste local da configuração, sem acessar dados externos: `php tests/connection.php`. A montagem da conexão foi validada; a confirmação no seu banco ocorre ao abrir o novo deploy.

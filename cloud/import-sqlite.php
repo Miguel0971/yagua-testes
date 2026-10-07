@@ -8,12 +8,16 @@ try{
     $source=new PDO('sqlite:'.$path,null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
     $source->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=5000; BEGIN');
     $version=(int)$source->query('PRAGMA user_version')->fetchColumn();
-    if(!in_array($version,[1,2],true))throw new RuntimeException('Use o banco do Yágua CS (versão 1 ou 2).');
+    if(!in_array($version,[1,2,3],true))throw new RuntimeException('Use o banco do Yágua CS (versão 1 ou 2).');
     if($source->query('PRAGMA integrity_check')->fetchColumn()!=='ok' || $source->query('PRAGMA foreign_key_check')->fetch())throw new RuntimeException('Banco de origem com inconsistências.');
     $pdo=requireCloud();$counts=[];
     transaction(function()use($source,$pdo,&$counts){
         if(cloudSchemaExists($pdo))throw new RuntimeException('O destino já está preparado. Use um banco PostgreSQL vazio; nenhum dado será sobrescrito.');
         createCloudSchema($pdo);
+        if($source->query("SELECT name FROM sqlite_master WHERE type='table' AND name='board_statuses'")->fetchColumn()){
+            $pdo->exec('DELETE FROM board_statuses');
+            foreach($source->query('SELECT * FROM board_statuses') as $stage)sql('INSERT INTO board_statuses(key,label,color,sortOrder,isClosed,builtin) VALUES(?,?,?,?,?,?)',array_values($stage));
+        }
         $tables=['users','clients','technicians','client_technicians','updates','tasks'];
         foreach($tables as $table){
             $columns=$source->query('PRAGMA table_info('.$table.')')->fetchAll();

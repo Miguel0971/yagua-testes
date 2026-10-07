@@ -19,7 +19,7 @@ function db(): PDO {
         if (!is_file($path)) throw new RuntimeException('Execute a instalação do módulo pelo terminal.');
         $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
         $pdo->exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
-        if ((int)$pdo->query('PRAGMA user_version')->fetchColumn() < 2) throw new RuntimeException('Execute migrate.php para atualizar o banco existente.', 1002);
+        if ((int)$pdo->query('PRAGMA user_version')->fetchColumn() < 3) throw new RuntimeException('Execute migrate.php para atualizar o banco existente.', 1002);
     }
     return $pdo;
 }
@@ -50,7 +50,7 @@ function positiveId(mixed $value): int {
 }
 function currentUser(): ?array {
     $id = $_SESSION['yagua_user'] ?? null;
-    $user = $id ? (sql('SELECT id,nome,login,role,mustChangePassword,authVersion FROM users WHERE id=?', [$id])->fetch() ?: null) : null;
+    $user = $id ? (sql('SELECT id,nome,login,role,mustChangePassword,authVersion,colorTheme FROM users WHERE id=?', [$id])->fetch() ?: null) : null;
     if ($user && (int)$user['authVersion'] !== (int)($_SESSION['yagua_auth_version'] ?? 0)) {
         unset($_SESSION['yagua_user']); return null;
     }
