@@ -39,7 +39,7 @@ Não é necessário mudar DATABASE_URL nem criar outro banco. Se aparecer “Atu
 - **Quadro em lista:** cada coluna tem “Ver em lista”, que mostra os clientes daquele status.
 - **Status personalizados (admin):** abra “Status do quadro” no menu ou “Gerenciar status” em Clientes. Defina nome, cor, ordem e se a etapa é concluída. Quanto menor a ordem, mais à esquerda aparece a coluna.
 - **Etapas concluídas:** encerram os alertas de acompanhamento do cliente. Para mudar o tipo de uma etapa personalizada já usada, mova primeiro seus clientes, incluindo os arquivados.
-- **Remover etapa:** permitido apenas para etapas personalizadas sem clientes vinculados, com confirmação. As etapas originais podem ser renomeadas, reordenadas e recoloridas; seu tipo é preservado.
+- **Remover etapa:** na versão 1.5.1, use Excluir seção e escolha outra seção para receber os clientes. Nenhum cliente é apagado. Mantenha uma seção em aberto e uma concluída.
 - **Cores:** escolha Oceano, Azul, Violeta, Rosa, Âmbar, Verde ou Grafite no topo e clique em “Aplicar cor”. A escolha é individual e acompanha a conta. Tema claro/escuro continua sendo uma preferência do navegador.
 - **Urgência:** a escala vermelha dos alertas permanece independente da cor escolhida.
 

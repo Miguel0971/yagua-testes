@@ -10,7 +10,7 @@
   },
   "routes": [
     {
-      "src": "/assets/(app\\.css|theme\\.css|app\\.js|theme\\.js|favicon\\.svg|modelo-clientes\\.csv)",
+      "src": "/assets/(app\\.css|theme\\.css|app\\.js|theme\\.js|favicon\\.svg|logo\\.png|modelo-clientes\\.csv)",
       "dest": "/assets/$1"
     },
     {

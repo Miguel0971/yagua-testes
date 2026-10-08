@@ -1,4 +1,10 @@
-# Atualização 1.5.0
+# Atualização 1.5.1
+
+Logo oficial aplicada ao menu e ao login. Administradores agora podem excluir seções pelo Quadro ou por Status do quadro → Excluir seção. É obrigatório escolher outra seção para receber todos os clientes, incluindo os arquivados. Cards, conversas, contatos e subtarefas são preservados; a transferência entra no histórico com o autor. Os alertas passam a seguir o tipo da seção de destino.
+
+É necessário manter pelo menos uma seção em aberto e uma concluída. Para excluir a última de um tipo, crie primeiro outra desse mesmo tipo. A regra também vale para as seções originais. Não há migração de banco nesta revisão.
+
+## Novidades da versão 1.5.0
 
 ## Publicar
 

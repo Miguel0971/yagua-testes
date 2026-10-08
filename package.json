@@ -1,6 +1,6 @@
 {
   "name": "yagua-cs",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "Y\u00e1gua CS \u2014 PHP com PostgreSQL na Vercel",
   "engines": {

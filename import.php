@@ -86,7 +86,7 @@ function handleImportAction(string $action,array $user):void {
                 if(!$reason&&sql('SELECT id FROM updates WHERE requestToken=?',[$token])->fetch())$reason='Já importado nesta operação.';
                 if(!$reason&&$batch['skipDuplicates']&&sql('SELECT id FROM clients WHERE lower(nome)=lower(?) LIMIT 1',[$row['name']])->fetch())$reason='Nome já cadastrado (incluindo arquivados).';
                 if($reason){$skipped++;$items[]=['line'=>$row['line'],'name'=>$row['name'],'message'=>$reason];continue;}
-                sql('INSERT INTO clients(nome,observacoes,status,boardStatus,priority,nextContact,cadence,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)',[$row['name'],$row['description'],'active','active','normal',$row['next'],$row['cadence'],nowUtc(),nowUtc()]);
+                sql('INSERT INTO clients(nome,observacoes,status,boardStatus,priority,nextContact,cadence,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?)',[$row['name'],$row['description'],stageLifecycle(defaultStage()),defaultStage(),'normal',$row['next'],$row['cadence'],nowUtc(),nowUtc()]);
                 $id=insertedId('clients');
                 if($row['contact']!==''){
                     // Each imported contact belongs to this client; names alone never merge people.

@@ -13,6 +13,12 @@ function stageLifecycle(string $key): string {
     $s=stageRow($key);if((int)$s['isClosed'])return 'done';
     return in_array($key,['active','waiting','attention'],true)?$key:'active';
 }
+function defaultStage(bool $closed=false): string {
+    $preferred=$closed?'done':'active';
+    foreach(statusRows() as $row)if($row['key']===$preferred&&(bool)$row['isClosed']===$closed)return $row['key'];
+    foreach(statusRows() as $row)if((bool)$row['isClosed']===$closed)return $row['key'];
+    throw new DomainException('Cadastre uma seção '.($closed?'concluída':'em aberto').' no quadro.');
+}
 function listReturn(): string {
     $params=['layout'=>'list'];
     foreach(['q','filter','owner','sort','archived'] as $k)if(isset($_GET[$k])&&is_string($_GET[$k]))$params[$k]=$_GET[$k];
@@ -35,18 +41,25 @@ function handleFeatureAction(string $action,array $user): void {
                 $old=stageRow($key);
                 // Built-in lifecycle semantics remain stable for old data and integrations.
                 if($old['builtin'])$closed=(int)$old['isClosed'];
+                if($closed!==(int)$old['isClosed'] && (int)sql('SELECT COUNT(*) FROM board_statuses WHERE isClosed=?',[(int)$old['isClosed']])->fetchColumn()<=1)throw new DomainException('Mantenha pelo menos uma seção em aberto e uma concluída.');
                 if($closed!==(int)$old['isClosed'] && sql('SELECT id FROM clients WHERE boardStatus=? LIMIT 1',[$key])->fetch())throw new DomainException('Não altere o tipo de um status em uso. Mova seus clientes para outro status antes.');
                 sql('UPDATE board_statuses SET label=?,color=?,sortOrder=?,isClosed=? WHERE key=?',[$label,$color,$order,$closed,$key]);
             }else sql('INSERT INTO board_statuses(key,label,color,sortOrder,isClosed,builtin) VALUES(?,?,?,?,?,0)',['custom_'.bin2hex(random_bytes(8)),$label,$color,$order,$closed]);
         });finish('view=statuses','Status salvo.');
     }
     if($action==='stage_delete'){
-        requireAdmin($user);$key=field($_POST,'key',40);
-        transaction(function()use($key){
-            if(stageRow($key)['builtin'])throw new DomainException('Os status originais não podem ser removidos.');
-            if(sql('SELECT id FROM clients WHERE boardStatus=? LIMIT 1',[$key])->fetch())throw new DomainException('Este status está em uso. Mova seus clientes, inclusive os arquivados, antes de removê-lo.');
-            sql('DELETE FROM board_statuses WHERE key=?',[$key]);
-        });finish('view=statuses','Status removido.');
+        requireAdmin($user);$key=field($_POST,'key',40);$target=field($_POST,'target',40);
+        $count=transaction(function()use($key,$target,$user){
+            $source=stageRow($key);stageRow($target);
+            if($key===$target)throw new DomainException('Escolha outra seção para receber os clientes.');
+            if((int)sql('SELECT COUNT(*) FROM board_statuses WHERE isClosed=?',[(int)$source['isClosed']])->fetchColumn()<=1)throw new DomainException('Mantenha pelo menos uma seção em aberto e uma concluída. Crie uma substituta antes de excluir esta seção.');
+            $clients=sql('SELECT id FROM clients WHERE boardStatus=? OR (boardStatus IS NULL AND status=?)',[$key,$key])->fetchAll();
+            foreach($clients as $client){
+                sql('UPDATE clients SET boardStatus=?,status=?,version=version+1 WHERE id=?',[$target,stageLifecycle($target),$client['id']]);
+                activity((int)$client['id'],$user,'Moveu o cliente de “'.$source['label'].'” para “'.stageRow($target)['label'].'” ao excluir a seção do quadro.');
+            }
+            sql('DELETE FROM board_statuses WHERE key=?',[$key]);return count($clients);
+        });finish('view=statuses','Seção excluída. '.$count.' cliente(s) transferido(s), sem excluir cards ou histórico.');
     }
     if($action==='client_inline'){
         $id=positiveId($_POST['id']??null);$column=field($_POST,'column',20);

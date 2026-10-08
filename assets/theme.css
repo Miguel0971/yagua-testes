@@ -193,3 +193,9 @@ body{background:#fafafa;font-family:Arial,Helvetica,sans-serif;letter-spacing:0}
 .import-preview{max-height:52vh;overflow:auto}.import-preview table{min-width:1100px}.import-preview th{position:sticky;top:0;z-index:1}.import-preview td{font-size:12px;vertical-align:top}.import-description{max-width:230px;max-height:90px;overflow:auto;white-space:pre-wrap}.import-actions{margin-top:20px}.import-preview+form{margin-top:20px}
 
 .client-list col:nth-child(1){width:260px}.client-list col:nth-child(2){width:170px}.client-list col:nth-child(3){width:145px}.client-list col:nth-child(4){width:100px}.client-list col:nth-child(5){width:130px}.client-list col:nth-child(6){width:165px}.client-list col:nth-child(7){width:160px}.client-list col:nth-child(8){width:140px}.client-list col:nth-child(9){width:245px}.client-list col:nth-child(10){width:85px}
+
+/* Marca oficial sem distorção ou recoloração. */
+:root .sidebar .brand{padding:0;justify-content:center}
+.brand-logo{display:block;width:100%;max-width:190px;height:auto;object-fit:contain;background:#fff;padding:8px;border-radius:4px}
+.auth-brand .brand-logo{max-width:245px}.auth-brand{justify-content:center}
+.column-delete-link{display:inline-block;font-size:11px;margin:0 4px 12px}.section-removal{border-left:3px solid #b74646;margin-bottom:22px}.section-removal form{max-width:560px}
