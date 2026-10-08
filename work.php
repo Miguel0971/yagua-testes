@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/features.php';
+require_once __DIR__.'/import.php';
 const PRIORITIES=['low'=>'Baixa','normal'=>'Normal','high'=>'Alta','urgent'=>'Urgente'];
 function choose(array $options, string $key): string {
     $value=field($_POST,$key,30);
@@ -68,15 +69,14 @@ function saveClientLinks(int $id,array $data): void {
         [$name,$phone,$email]=technicianFields($entry);
         sql('INSERT INTO technicians(nome,whatsapp,email) VALUES (?,?,?)',[$name,$phone,$email]);$ids[]=insertedId('technicians');
     }
-    if(!$ids)throw new DomainException('Selecione um contato existente ou cadastre um novo contato do cliente.');
     sql('DELETE FROM client_technicians WHERE clientId=?',[$id]);
     foreach($ids as $t)sql('INSERT INTO client_technicians VALUES (?,?)',[$id,$t]);
 }
 function handleWorkAction(string $action,array $user): void {
     handleFeatureAction($action,$user);
+    handleImportAction($action,$user);
     if($action==='client_save') {
         $id=empty($_POST['id'])?null:positiveId($_POST['id']);
-        if(!$id)requireAdmin($user);
         $name=field($_POST,'nome',160);$description=field($_POST,'observacoes',15000,false);
         $owner=nullableUser('ownerId');$status=choose(statusLabels(),'status');$priority=choose(PRIORITIES,'priority');
         $next=dateOnly('nextContact');$cadence=positiveId($_POST['cadence']??7);
@@ -84,14 +84,13 @@ function handleWorkAction(string $action,array $user): void {
         $id=transaction(function()use($id,$name,$description,$owner,$status,$priority,$next,$cadence,$user){
             $lifecycle=stageLifecycle($status);
             if($id){$c=activeClient($id);checkVersion($c);
-                if($user['role']!=='ADMIN')$name=$c['nome'];
                 sql('UPDATE clients SET nome=?,observacoes=?,ownerId=?,status=?,boardStatus=?,priority=?,nextContact=?,cadence=?,version=version+1,updatedAt=? WHERE id=?',[$name,$description,$owner,$lifecycle,$status,$priority,$next,$cadence,nowUtc(),$id]);
                 activity($id,$user,'Atualizou os dados do acompanhamento.');
             }else{
                 sql('INSERT INTO clients(nome,observacoes,ownerId,status,boardStatus,priority,nextContact,cadence,createdAt,updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?)',[$name,$description,$owner,$lifecycle,$status,$priority,$next,$cadence,nowUtc(),nowUtc()]);
                 $id=insertedId('clients');activity($id,$user,'Criou o acompanhamento do cliente.');
             }
-            if($user['role']==='ADMIN')saveClientLinks($id,$_POST);
+            saveClientLinks($id,$_POST);
             return $id;
         });finish('client='.$id,'Acompanhamento salvo.');
     }
@@ -103,7 +102,7 @@ function handleWorkAction(string $action,array $user): void {
         });finish('client='.$id,'Status atualizado.');
     }
     if($action==='client_archive'||$action==='client_restore') {
-        requireAdmin($user);$id=positiveId($_POST['id']??null);
+        $id=positiveId($_POST['id']??null);
         transaction(function()use($id,$action,$user){$c=client($id);checkVersion($c);
             sql('UPDATE clients SET deletedAt=?,version=version+1 WHERE id=?',[$action==='client_archive'?nowUtc():null,$id]);
             activity($id,$user,$action==='client_archive'?'Arquivou o cliente.':'Restaurou o cliente.');

@@ -1,3 +1,7 @@
+# Atualização 1.5.0: importação e permissões
+
+Leia **ATUALIZAR-IMPORTACAO.md**. Se já usa a Lista e os status personalizados, esta revisão não exige nova migração de banco.
+
 # Atualização: Lista, status personalizados e cores
 
 **Já usa o aplicativo? Siga ATUALIZAR-LISTA.md antes de substituir os arquivos.** Há uma migração do banco obrigatória nesta versão. Não reinstale o sistema.
@@ -36,7 +40,7 @@ Para instalação nova, siga a seção de instalação abaixo; o banco já será
 - Esses registros representam os contatos do cliente; não são contas da equipe do CS e não recebem login. Um contato existente pode ser vinculado a mais de um cliente quando necessário.
 - No WhatsApp brasileiro, informe DDD e número: o sistema acrescenta 55. Para outros países, informe + seguido do código do país. Números internacionais são armazenados normalizados. Exemplo: `(11) 99999-9999` vira `5511999999999`.
 - Os detalhes do cliente e a administração de contatos exibem links de WhatsApp e e-mail. Os links só abrem a conversa/composição; não enviam mensagens automaticamente.
-- Edite WhatsApp e e-mail de um contato em **Contatos → Editar**. O novo cadastro e a busca direta estão disponíveis aos administradores, mantendo as permissões da versão anterior.
+- Edite WhatsApp e e-mail de um contato em **Contatos → Editar**. Cadastro, edição e remoção de contatos estão disponíveis para toda a equipe.
 - Não há um número fixo de novos contatos na interface. Como qualquer formulário PHP, envios muito grandes dependem de `max_input_vars`, `post_max_size` e memória no servidor. O app detecta divergência na quantidade recebida e rejeita a gravação parcial; aumente esses limites ou salve em lotes quando necessário.
 
 ### Tema
@@ -149,7 +153,7 @@ Para instalação não interativa, `YAGUA_CS_INITIAL_PASSWORD` define a senha in
 - **Horário:** entrada e exibição em America/Sao_Paulo. Instantes são guardados em UTC; prazos são datas de calendário. Contatos futuros acima de cinco minutos são rejeitados.
 - **Concluir acompanhamento:** altera o status do cliente; as subtarefas continuam explícitas e não são concluídas automaticamente.
 - **Histórico:** mantém IDs e snapshots dos nomes dos autores/contatos. Renomear ou remover um contato não reescreve os contatos anteriores.
-- **Arquivar:** retira o cliente da carteira ativa. Dados, atualizações e tarefas permanecem no banco e podem ser restaurados pelo administrador.
+- **Arquivar:** retira o cliente da carteira ativa. Dados, atualizações e tarefas permanecem no banco e podem ser restaurados por qualquer usuário da equipe.
 - **Subtarefas removidas:** exclusão lógica, com ação registrada no histórico.
 - **Colaboração:** edições concorrentes de cliente/subtarefa verificam a versão. Se outra pessoa salvou primeiro, o app pede recarregamento antes de sobrescrever.
 - **Reenvio:** contatos, comentários e criação de subtarefas usam identificador de operação para impedir duplicação do mesmo formulário.
@@ -162,15 +166,16 @@ Para instalação não interativa, `YAGUA_CS_INITIAL_PASSWORD` define a senha in
 | Registrar contato ou comentário | Sim | Sim |
 | Editar descrição, responsável, frequência, próximo contato, prioridade e status | Sim | Sim |
 | Criar, editar, concluir, reabrir e remover subtarefas | Sim | Sim |
-| Criar/renomear clientes e alterar vínculos de contatos | Não | Sim |
-| Arquivar/restaurar clientes e consultar arquivados | Não | Sim |
-| Gerenciar contatos e contas | Não | Sim |
+| Criar/renomear clientes e alterar vínculos de contatos | Sim | Sim |
+| Arquivar/restaurar clientes e consultar arquivados | Sim | Sim |
+| Gerenciar contatos e importar planilhas | Sim | Sim |
+| Gerenciar contas e status do quadro | Não | Sim |
 
-Contato é um cadastro vinculado aos contatos. Responsável do CS e responsável de subtarefa são contas de usuário. Uma mesma pessoa pode ter ambos os cadastros, conforme a rotina da equipe.
+Contato é uma pessoa vinculada a um ou mais clientes. Responsável do CS e responsável de subtarefa são contas de usuário. Uma mesma pessoa pode ter ambos os cadastros, conforme a rotina da equipe.
 
 ## Arquivos e segurança
 
-`index.php` controla a sessão e apresenta as páginas. `core.php` contém autenticação, acesso ao banco e cadastros administrativos. `work.php` implementa clientes, atualizações e subtarefas. `ui.php` e `views/` organizam os componentes/telas. `assets/` contém CSS, JavaScript e favicon. `schema.sql` define o banco; `install.php` e `migrate.php` executam apenas pelo terminal. A versão atual do banco é 2.
+`index.php` controla a sessão e apresenta as páginas. `core.php` contém autenticação, acesso ao banco e cadastros administrativos. `work.php` implementa clientes, atualizações e subtarefas. `ui.php` e `views/` organizam os componentes/telas. `assets/` contém CSS, JavaScript e favicon. `schema.sql` define o banco; `install.php` e `migrate.php` executam apenas pelo terminal. A versão atual do banco SQLite é 3; a do PostgreSQL é 2. `import.php` faz a importação de clientes via planilha com prévia e confirmação.
 
 Senhas com hash; cookies HttpOnly/SameSite; proteção CSRF; consultas parametrizadas; conteúdo escapado; sessão expira após uma hora sem atividade; cinco falhas de login por IP ou login bloqueiam novas tentativas por até 15 minutos. Troca/redefinição de senha invalida as outras sessões. O último administrador não pode ser rebaixado. Use `display_errors=Off` e `log_errors=On` em produção.
 
@@ -178,7 +183,7 @@ Faça backup regular do banco privado. Com a aplicação em uso, prefira a API d
 
 ## Testes
 
-A suíte usa apenas Python 3 padrão e PHP com PDO_SQLite, cria um banco temporário, testa os fluxos HTTP e o remove ao terminar:
+A suíte usa Python 3 padrão e PHP com PDO_SQLite, SimpleXML e zlib, cria um banco temporário, testa os fluxos HTTP e o remove ao terminar:
 
 ```bash
 PHP_BIN=/opt/lampp/bin/php python3 tests/integration.py

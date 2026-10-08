@@ -12,6 +12,40 @@ class Browser:
   self.status=r.status;self.page=r.read().decode();return self.page
  def token(self):return re.search(r'name="csrf" value="([^"]+)"',self.page)[1]
  def post(self,action,path='',**data):return self.go(path,{'csrf':self.token(),'action':action,**data})
+def upload(browser,filename,content,skip=True):
+ boundary='yagua-'+secrets.token_hex(12)
+ fields={'csrf':browser.token(),'action':'import_preview'}
+ if skip:fields['skipDuplicates']='1'
+ parts=[]
+ for key,value in fields.items():parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n'.encode())
+ parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="spreadsheet"; filename="{filename}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()+content+b'\r\n')
+ parts.append(f'--{boundary}--\r\n'.encode())
+ request=urllib.request.Request(browser.base+'?view=import',data=b''.join(parts),headers={'Content-Type':'multipart/form-data; boundary='+boundary})
+ try:response=browser.http.open(request)
+ except urllib.error.HTTPError as error:response=error
+ browser.status=response.status;browser.page=response.read().decode();return browser.page
+
+def excelFixture(name='Cliente Excel'):
+ import zipfile,io
+ from xml.sax.saxutils import escape
+ cols=['nome_cliente','descricao','tec_responsavel','whatsapp_responsavel','email_responsavel','dias_de_contato','prox_contato']
+ def cell(col,row,value):return f'<c r="{col}{row}" t="inlineStr"><is><t>{escape(value)}</t></is></c>'
+ header=''.join(cell(chr(65+i),1,value) for i,value in enumerate(cols))
+ values=''.join(cell(chr(65+i),2,value) for i,value in enumerate([name,'Descrição Excel','Contato Excel','11999991234','excel@example.com','10']))
+ serial=(datetime.date(2026,10,9)-datetime.date(1899,12,30)).days
+ values+=f'<c r="G2" s="1"><v>{serial}</v></c>'
+ files={
+ '[Content_Types].xml':'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>',
+ '_rels/.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+ 'xl/workbook.xml':'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Clientes" sheetId="1" r:id="rId1"/></sheets></workbook>',
+ 'xl/_rels/workbook.xml.rels':'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+ 'xl/styles.xml':'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cellXfs count="2"><xf numFmtId="0"/><xf numFmtId="14"/></cellXfs></styleSheet>',
+ 'xl/worksheets/sheet1.xml':f'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:G2"/><sheetData><row r="1">{header}</row><row r="2">{values}</row></sheetData></worksheet>'}
+ out=io.BytesIO()
+ with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as archive:
+  for path,value in files.items():archive.writestr(path,value)
+ return out.getvalue()
+
 class Integration(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
@@ -33,11 +67,11 @@ class Integration(unittest.TestCase):
   with sqlite3.connect(self.database) as db:return db.execute(q,params).fetchone()[0]
  def version(self,table,id=1):return self.scalar(f'select version from {table} where id=?',(id,))
  def test_team_workflow(self):
-  a=Browser(self.url);a.go();self.assertIn('Entrar no workspace',a.page)
+  a=Browser(self.url);a.go();self.assertIn('Entrar no Yágua CS',a.page)
   self.assertEqual(self.scalar('select count(*) from users'),1);self.assertEqual(self.scalar('select count(*) from clients'),0)
   a.post('login',login='admin',password='wrong');self.assertIn('Login ou senha incorretos',a.page)
   a.post('login',login='admin',password='3321');self.assertIn('primeiro acesso',a.page)
-  a.post('password',currentPassword='3321',newPassword='Admin-test-123',confirmPassword='Admin-test-123');self.assertIn('Sua próxima conversa',a.page)
+  a.post('password',currentPassword='3321',newPassword='Admin-test-123',confirmPassword='Admin-test-123');self.assertIn('Nenhum cliente cadastrado',a.page)
   a.post('technician_save',nome='Contato Teste A');a.post('technician_save',nome='Contato Teste B')
   a.post('user_save',nome='Pessoa CS',login='equipe',password='Equipe-test-123',role='USUARIO')
   fields={'nome':'Árvore Cliente','observacoes':'Contexto <script>','ownerId':'2','status':'active','priority':'high','nextContact':'2025-09-30','cadence':'7','technicians[]':['1','2']}
@@ -56,7 +90,7 @@ class Integration(unittest.TestCase):
   b.post('password',currentPassword='Equipe-test-123',newPassword='Equipe-new-123',confirmPassword='Equipe-new-123')
   self.assertNotIn('href="?view=team"',b.page)
   b.go('?view=team');self.assertIn('somente para administradores',b.page)
-  b.post('client_save',**fields);self.assertEqual(self.scalar('select count(*) from clients'),2)
+  b.post('user_save',nome='Invasor',login='invasor',role='ADMIN',password='Teste-123');self.assertIn('somente para administradores',b.page)
   b.go('?client=1');token=secrets.token_hex(32)
   b.post('update','?client=1',clientId=1,kind='contact',technicianId=1,contactAt='2025-09-30T14:00',mensagem='Contato recente <script>alert(1)</script>',requestToken=token)
   self.assertIn('Contato registrado',b.page);self.assertIn('&lt;script&gt;',b.page)
@@ -73,7 +107,7 @@ class Integration(unittest.TestCase):
   b.post('client_status','?client=1',id=1,version=version,status='waiting');self.assertEqual(self.scalar('select status from clients where id=1'),'waiting')
   a.post('client_status','?client=1',id=1,version=version,status='done');self.assertIn('Outra pessoa atualizou',a.page)
   self.assertEqual(self.scalar('select status from clients where id=1'),'waiting')
-  b.go('?view=client-edit&id=1');b.post('client_save','?view=client-edit&id=1',id=1,version=self.version('clients'),**{**fields,'nome':'Nome proibido','observacoes':'Descrição atualizada','status':'waiting'})
+  b.go('?view=client-edit&id=1');b.post('client_save','?view=client-edit&id=1',id=1,version=self.version('clients'),**{**fields,'nome':'Árvore Cliente','observacoes':'Descrição atualizada','status':'waiting'})
   self.assertEqual(self.scalar('select nome from clients where id=1'),'Árvore Cliente');self.assertIn('Descrição atualizada',b.page)
   taskfields={'clientId':1,'title':'Alinhar retorno','description':'Contexto da subtarefa','assigneeId':2,'dueDate':'2025-09-20','priority':'urgent','requestToken':secrets.token_hex(32)}
   b.post('task_save','?view=task&client=1',**taskfields);self.assertIn('Subtarefa salva',b.page)
@@ -88,20 +122,21 @@ class Integration(unittest.TestCase):
   b.go('?view=tasks&completed=1');self.assertIn('Alinhar visita',b.page)
   b.post('task_toggle','?client=1',id=1,version=self.version('tasks'),completed='0');self.assertIsNone(self.scalar('select completedAt from tasks where id=1'))
   b.post('task_delete','?client=1',id=1,version=self.version('tasks'));self.assertIsNotNone(self.scalar('select deletedAt from tasks where id=1'));self.assertIn('Removeu a subtarefa',b.page)
-  b.post('client_archive','?client=1',id=1,version=self.version('clients'));self.assertIsNone(self.scalar('select deletedAt from clients where id=1'))
+  b.post('client_archive','?client=1',id=1,version=self.version('clients'));self.assertIsNotNone(self.scalar('select deletedAt from clients where id=1'))
+  b.post('client_restore',id=1,version=self.version('clients'))
   a.go();a.post('user_save',id=2,nome='Pessoa Renomeada',login='equipe',role='USUARIO',password='')
   a.post('technician_save',id=1,nome='Contato Renomeado');a.go('?client=1');self.assertIn('Pessoa CS',a.page);self.assertIn('Contato Teste A',a.page)
   a.post('technician_delete',id=1);self.assertIn('Contato removido',a.page)
-  a.post('technician_delete',id=2);self.assertIn('Vincule outro contato',a.page)
+  a.post('technician_delete',id=999999);self.assertIn('Contato não encontrado',a.page)
   a.go('?client=1');a.post('client_archive',id=1,version=self.version('clients'))
-  b.go('?client=1');self.assertIn('Cliente não encontrado',b.page)
+  b.go('?client=1');self.assertIn('Cliente arquivado',b.page)
   a.go('?archived=1');self.assertIn('Árvore Cliente',a.page)
   a.go('?client=1');self.assertIn('Conversa interna da equipe',a.page)
   a.post('client_restore',id=1,version=self.version('clients'));self.assertIsNone(self.scalar('select deletedAt from clients where id=1'))
   b.go('',{'action':'client_status','id':1,'version':self.version('clients'),'status':'done','csrf':'invalid'});self.assertEqual(b.status,403)
   a.go();a.post('user_save',id=1,nome='Admin',login='admin',role='USUARIO',password='');self.assertIn('pelo menos um administrador',a.page)
   a.go();a.post('user_save',id=2,nome='Pessoa CS',login='equipe',role='USUARIO',password='Reset-test-123')
-  b.go();self.assertIn('Entrar no workspace',b.page)
+  b.go();self.assertIn('Entrar no Yágua CS',b.page)
   a.go('?client=1&feed=comment');self.assertIn('Conversa interna da equipe',a.page);self.assertNotIn('Contato retroativo',a.page)
   self.assertNotEqual(self.scalar('select passwordHash from users where id=1'),'Admin-test-123')
   a.go('?view=client-edit');before=self.scalar('select count(*) from clients');techBefore=self.scalar('select count(*) from technicians')
@@ -118,7 +153,57 @@ class Integration(unittest.TestCase):
   a.post('client_save','?view=client-edit',**{**inline,'newTechnicianCount':'3'});self.assertIn('apenas parte dos contatos',a.page)
   self.assertEqual(self.scalar('select count(*) from clients'),before+1)
   b.go();b.post('login',login='equipe',password='Reset-test-123');b.post('password',currentPassword='Reset-test-123',newPassword='Final-test-123',confirmPassword='Final-test-123')
-  b.post('client_save','?view=client-edit',**inline);self.assertEqual(self.scalar('select count(*) from technicians'),techBefore+2)
+  b.post('client_save','?view=client-edit',**inline);self.assertEqual(self.scalar('select count(*) from technicians'),techBefore+4)
+ def test_y_import_and_shared_management(self):
+  b=Browser(self.url);b.go();b.post('login',login='equipe',password='Final-test-123');b.go('?view=import')
+  self.assertIn('Selecionar planilha',b.page)
+  before=self.scalar('SELECT COUNT(*) FROM clients')
+  header='nome_cliente;descricao;tec_responsavel;whatsapp_responsavel;email_responsavel;dias_de_contato;prox_contato\n'
+  content=header+'Lote A;Descrição;Pessoa Importada;(11) 99999-1234;pessoa@example.com;12;09/10/2026\nLote B;null;null;null;null;null;null\nLote A;;;;;;\n;sem nome;;;;;\nLote C;;Pessoa C;abc;invalido;0;31/02/2026\n'
+  upload(b,'clientes.csv',content.encode());self.assertIn('Conferir importação',b.page);self.assertIn('WhatsApp inválido',b.page);self.assertEqual(self.scalar('SELECT COUNT(*) FROM clients'),before)
+  token=re.search(r'name="requestToken" value="([^"]+)"',b.page)[1]
+  b.post('import_confirm','?view=import',requestToken=token);self.assertIn('3 cliente(s) importado(s); 2 linha(s) ignorada(s)',b.page)
+  self.assertEqual(self.scalar('SELECT COUNT(*) FROM clients'),before+3)
+  b.post('import_confirm','?view=import',requestToken=token);self.assertEqual(self.scalar('SELECT COUNT(*) FROM clients'),before+3)
+  cid=self.scalar("SELECT id FROM clients WHERE nome='Lote A'");tid=self.scalar('SELECT technicianId FROM client_technicians WHERE clientId=?',(cid,))
+  self.assertEqual(self.scalar('SELECT whatsapp FROM technicians WHERE id=?',(tid,)),'5511999991234')
+  self.assertEqual(self.scalar('SELECT nextContact FROM clients WHERE id=?',(cid,)),'2026-10-09')
+  self.assertEqual(self.scalar("SELECT cadence FROM clients WHERE nome='Lote B'"),7)
+  self.assertIsNone(self.scalar("SELECT nextContact FROM clients WHERE nome='Lote B'"))
+  self.assertEqual(self.scalar("SELECT COUNT(*) FROM updates WHERE clientId=? AND userId=2 AND kind='system'",(cid,)),1)
+  b.go('?client='+str(cid));b.post('update','?client='+str(cid),clientId=cid,kind='contact',technicianId=tid,contactAt='2025-01-01T12:00',mensagem='Histórico importado',requestToken=secrets.token_hex(32))
+  b.go('?view=technicians');b.post('technician_save','?view=technicians',id=tid,nome='Contato editado',whatsapp='11999991234',email='novo@example.com')
+  self.assertEqual(self.scalar('SELECT nome FROM technicians WHERE id=?',(tid,)),'Contato editado')
+  b.post('technician_delete','?view=technicians',id=tid);self.assertIsNotNone(self.scalar('SELECT deletedAt FROM technicians WHERE id=?',(tid,)))
+  self.assertEqual(self.scalar("SELECT technicianNameAtTime FROM updates WHERE clientId=? AND kind='contact'",(cid,)),'Pessoa Importada')
+  b.go('?view=client-edit&id='+str(cid));b.post('client_save','?view=client-edit&id='+str(cid),id=cid,version=self.version('clients',cid),nome='Lote renomeado',observacoes='',status='active',priority='normal',cadence=7,ownerId='',nextContact='')
+  self.assertEqual(self.scalar('SELECT nome FROM clients WHERE id=?',(cid,)),'Lote renomeado')
+  b.go('?layout=board');self.assertIn('Excluir cliente Lote renomeado',b.page);self.assertIn('data-confirm=',b.page)
+  b.post('client_archive','?layout=board',id=cid,version=self.version('clients',cid));self.assertIsNotNone(self.scalar('SELECT deletedAt FROM clients WHERE id=?',(cid,)))
+  b.go('?archived=1');self.assertIn('Lote renomeado',b.page)
+  b.go('?client='+str(cid));self.assertIn('Histórico importado',b.page)
+  b.post('client_restore',id=cid,version=self.version('clients',cid));self.assertIsNone(self.scalar('SELECT deletedAt FROM clients WHERE id=?',(cid,)))
+  b.go('?view=import');upload(b,'clientes.xlsx',excelFixture());self.assertIn('Cliente Excel',b.page);self.assertIn('09/10/2026',b.page)
+  token=re.search(r'name="requestToken" value="([^"]+)"',b.page)[1];b.post('import_confirm','?view=import',requestToken=token)
+  self.assertEqual(self.scalar("SELECT nextContact FROM clients WHERE nome='Cliente Excel'"),'2026-10-09')
+  b.go('?view=import');upload(b,'clientes.csv',(header+'Cliente Excel;;;;;;\n').encode());token=re.search(r'name="requestToken" value="([^"]+)"',b.page)[1];b.post('import_confirm','?view=import',requestToken=token)
+  self.assertIn('0 cliente(s) importado(s); 1 linha(s) ignorada(s)',b.page)
+  upload(b,'grande.csv',(header+'Lote;;;;;;\n'*501).encode());self.assertIn('máximo 500',b.page)
+  upload(b,'quebrado.xlsx',b'not a zip');self.assertIn('Não foi possível ler',b.page)
+  import zipfile,io
+  original=excelFixture('Arquivo bloqueado');stream=io.BytesIO()
+  with zipfile.ZipFile(io.BytesIO(original)) as source,zipfile.ZipFile(stream,'w',zipfile.ZIP_DEFLATED) as target:
+   for name in source.namelist():
+    content=source.read(name)
+    if name=='xl/worksheets/sheet1.xml':content=b'<!DOCTYPE worksheet [<!ENTITY test "blocked">]>'+content
+    target.writestr(name,content)
+  upload(b,'entidades.xlsx',stream.getvalue());self.assertIn('XML não permitido',b.page)
+  stream=io.BytesIO()
+  with zipfile.ZipFile(io.BytesIO(original)) as source,zipfile.ZipFile(stream,'w',zipfile.ZIP_DEFLATED) as target:
+   for name in source.namelist():target.writestr(name,b' '*8388609 if name=='xl/worksheets/sheet1.xml' else source.read(name))
+  upload(b,'conteudo-grande.xlsx',stream.getvalue());self.assertIn('descompactado muito grande',b.page)
+  b.go('?view=team');self.assertIn('somente para administradores',b.page)
+  b.go('?view=statuses');self.assertIn('somente para administradores',b.page)
  def test_z_list_status_and_colors(self):
   a=Browser(self.url);a.go();a.post('login',login='admin',password='Admin-test-123')
   a.go();self.assertLess(a.page.index('> Lista</a>'),a.page.index('> Cards</a>'))

@@ -113,7 +113,6 @@ function handlePost(?array $user): void {
     }
     if ($user['mustChangePassword']) throw new DomainException('Altere sua senha antes de continuar.');
     handleWorkAction($action, $user);
-    requireAdmin($user);
     if($action==='technician_save') {
         $id=empty($_POST['id'])?null:positiveId($_POST['id']); [$name,$whatsapp,$email]=technicianFields($_POST);
         $clientId=empty($_POST['linkClientId'])?null:positiveId($_POST['linkClientId']);
@@ -122,6 +121,10 @@ function handlePost(?array $user): void {
             if($id){
                 if(!sql('SELECT id FROM technicians WHERE id=? AND deletedAt IS NULL',[$id])->fetch())throw new DomainException('Contato não encontrado.');
                 sql('UPDATE technicians SET nome=?,whatsapp=?,email=? WHERE id=?',[$name,$whatsapp,$email,$id]);
+                foreach(sql('SELECT clientId FROM client_technicians WHERE technicianId=?',[$id])->fetchAll() as $link){
+                    activity((int)$link['clientId'],$user,'Atualizou os dados do contato '.$name.'.');
+                    sql('UPDATE clients SET version=version+1 WHERE id=?',[$link['clientId']]);
+                }
             }else{
                 sql('INSERT INTO technicians(nome,whatsapp,email) VALUES (?,?,?)',[$name,$whatsapp,$email]);
                 $id=insertedId('technicians');
@@ -136,16 +139,20 @@ function handlePost(?array $user): void {
     }
     if($action==='technician_delete') {
         $id=positiveId($_POST['id']??null);
-        transaction(function() use($id) {
-            // Impede deixar clientes ativos sem responsável.
-            $orphans=sql('SELECT c.id FROM clients c JOIN client_technicians ct ON ct.clientId=c.id WHERE ct.technicianId=? AND c.deletedAt IS NULL AND NOT EXISTS (SELECT 1 FROM client_technicians x JOIN technicians t ON t.id=x.technicianId WHERE x.clientId=c.id AND t.deletedAt IS NULL AND t.id<>?)',[$id,$id])->fetchAll();
-            if($orphans) throw new DomainException('Vincule outro contato aos clientes deste profissional antes de removê-lo.');
+        transaction(function() use($id,$user) {
+            $contact=sql('SELECT nome FROM technicians WHERE id=? AND deletedAt IS NULL',[$id])->fetch();
+            if(!$contact)throw new DomainException('Contato não encontrado.');
+            foreach(sql('SELECT clientId FROM client_technicians WHERE technicianId=?',[$id])->fetchAll() as $link){
+                activity((int)$link['clientId'],$user,'Removeu o contato '.$contact['nome'].'.');
+                sql('UPDATE clients SET version=version+1 WHERE id=?',[$link['clientId']]);
+            }
             sql('UPDATE technicians SET deletedAt=? WHERE id=?',[nowUtc(),$id]);
             sql('DELETE FROM client_technicians WHERE technicianId=?',[$id]);
         });
         $_SESSION['flash']='Contato removido. Registros anteriores preservados.'; redirect('view=technicians');
     }
     if($action==='user_save') {
+        requireAdmin($user);
         $id=empty($_POST['id'])?null:positiveId($_POST['id']); [$name,$whatsapp,$email]=technicianFields($_POST); $login=field($_POST,'login',80); $role=field($_POST,'role',10); $pass=field($_POST,'password',72,false);
         if(!preg_match('/^[a-zA-Z0-9._-]{3,80}$/D',$login)) throw new DomainException('Login: 3 a 80 letras, números, pontos, hífens ou sublinhados.');
         if(!in_array($role,['ADMIN','USUARIO'],true)) throw new DomainException('Tipo de usuário inválido.');

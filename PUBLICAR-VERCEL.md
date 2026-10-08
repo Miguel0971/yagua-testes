@@ -1,5 +1,7 @@
 # Yágua CS — GitHub + Vercel + PostgreSQL
 
+Atualização 1.5.0: veja **ATUALIZAR-IMPORTACAO.md**. Quem já instalou a Lista não precisa migrar o banco novamente.
+
 **Sistema já publicado:** siga ATUALIZAR-LISTA.md. Execute `cloud/upgrade-list.sql` no banco atual antes de publicar os arquivos desta versão. As etapas de instalação/importação abaixo são apenas para a primeira publicação.
 
 Esta versão preserva o aplicativo PHP, as telas e as funcionalidades existentes. Na Vercel, usa `vercel-php@0.9.0` (runtime comunitário, PHP 8.5), Node 22 e PostgreSQL externo. Não é uma versão Next.js. Sem `DATABASE_URL`, continua disponível a instalação local em SQLite descrita no LEIA-ME.
@@ -129,7 +131,7 @@ Abra a URL HTTPS gerada e verifique:
 - Clientes importados, contatos, datas e histórico.
 - Cadastro e vínculo de um contato, nova conversa e uma subtarefa.
 - Tema escuro, cards/quadro, agenda e alertas.
-- Uma conta comum não acessa a administração.
+- Uma conta comum pode gerenciar clientes e contatos, mas não contas de usuários nem status personalizados.
 - `/core.php`, `/cloud/schema.sql`, `/cloud/install.php` e `/.env` retornam 404.
 
 A configuração publica os cinco arquivos estáticos de `assets/` e encaminha as telas para `api/index.php`. Arquivos internos não são rotas de execução/download. Não remova a lista de rotas do `vercel.json`.

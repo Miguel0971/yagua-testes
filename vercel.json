@@ -4,13 +4,13 @@
   "functions": {
     "api/index.php": {
       "runtime": "vercel-php@0.9.0",
-      "includeFiles": "{core.php,index.php,work.php,features.php,ui.php,cloud/**,views/**}",
+      "includeFiles": "{core.php,index.php,work.php,features.php,import.php,ui.php,vendor/**,cloud/**,views/**}",
       "maxDuration": 30
     }
   },
   "routes": [
     {
-      "src": "/assets/(app\\.css|theme\\.css|app\\.js|theme\\.js|favicon\\.svg)",
+      "src": "/assets/(app\\.css|theme\\.css|app\\.js|theme\\.js|favicon\\.svg|modelo-clientes\\.csv)",
       "dest": "/assets/$1"
     },
     {
